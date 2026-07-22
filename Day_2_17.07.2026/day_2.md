@@ -278,9 +278,9 @@ Repeat this thousands of times (once per epoch, or more often if using mini-batc
 
 In the next session, we'll learn about:
 
-- **Backpropagation**: How gradients are computed efficiently
-- **Advanced Optimizers**: Adam, RMSprop (better than basic gradient descent)
-- **Regularization**: Techniques to prevent overfitting
+- **Backpropagation**: How gradients are computed efficiently for every weight in the network, using the chain rule
+
+Further down the road: **Regularization** (Dropout, etc.) and **Advanced Optimizers** (Adam, RMSprop) each get their own dedicated session later in the course — see `Course_Schedule.md` for the full lineup.
 
 ---
 

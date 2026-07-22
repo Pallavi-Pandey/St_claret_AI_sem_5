@@ -180,8 +180,9 @@ This is the missing piece from last session's training loop — **"BACKWARD PASS
 In the next session, we'll learn about:
 
 - **Train, Test & Validation Sets**: How to properly evaluate a network
-- **Vanishing & Exploding Gradients**: What happens when backprop's chain of multiplications goes wrong
-- **Dropout & Regularization**: Techniques to prevent overfitting
+- **Vanishing & Exploding Gradients**: What happens when backprop's chain of multiplications goes wrong (we already saw a preview of this in the hands-on notebook!)
+
+Further down the road: **Dropout & Regularization** get their own dedicated session after that — see `Course_Schedule.md` for the full lineup.
 
 ---
 
