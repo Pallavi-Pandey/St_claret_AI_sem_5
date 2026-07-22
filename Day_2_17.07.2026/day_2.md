@@ -144,19 +144,91 @@ new_weight = old_weight - learning_rate × gradient
 - **Learning rate**: How big each step is (too big = overshoot, too small = takes forever)
 - **Gradient**: Direction and steepness of the slope
 
+**Simple Example:**
+
+Say a weight `w = 0`, and the loss function is `Loss = (w - 2)² + 1` (its lowest point, the "bottom of the mountain," is at `w = 2`).
+
+- **Gradient** at `w = 0`: `2 × (w - 2) = 2 × (0 - 2) = -4`
+- With a **learning rate of 0.1**:
+
+```
+new_weight = old_weight - learning_rate × gradient
+           = 0 - 0.1 × (-4)
+           = 0 + 0.4
+           = 0.4
+```
+
+- **Loss before the step:** `(0 - 2)² + 1 = 5.0`
+- **Loss after the step:** `(0.4 - 2)² + 1 = 3.56`
+
+One step already reduced the loss from 5.0 to 3.56! Repeating this update over and over keeps nudging `w` closer to 2, where the loss is smallest.
+
+### Choosing the Learning Rate
+
+The learning rate controls how big each step is, and getting it wrong causes two very different problems:
+
+| Learning Rate | What Happens | Why |
+| :--- | :--- | :--- |
+| **Too small** (e.g. 0.001) | Learning is painfully slow | Tiny steps mean it takes forever to reach the bottom |
+| **Just right** (e.g. 0.1–0.5) | Converges quickly and smoothly | Steps are big enough to make progress, small enough to settle down |
+| **Too large** (e.g. 1.1+) | Overshoots and can diverge | Each step jumps past the minimum, and the loss gets *worse* over time |
+
 ### Types of Gradient Descent
 
-| Type                    | How it Works               | Pros         | Cons                    |
-| ----------------------- | -------------------------- | ------------ | ----------------------- |
-| **Batch GD**      | Uses ALL data each time    | Stable       | Slow                    |
-| **Stochastic GD** | Uses 1 sample at a time    | Fast         | Noisy                   |
-| **Mini-Batch GD** | Uses small groups (32-256) | Best of both | Need to pick batch size |
+The example above computed the gradient from a single weight for simplicity. In practice, the gradient is computed from *training examples* — and how many examples we use per update gives us three variants. First, a key distinction:
+
+- **Epoch**: one complete pass through the *entire* training dataset
+- **Update (a.k.a. "step" or "iteration")**: one single adjustment of the weights
+
+An epoch can contain **one** update or **thousands** of updates — that's exactly what changes between the three variants below. Let's say we have a dataset of **1,000 training examples**.
+
+#### 1. Batch Gradient Descent (BGD)
+
+Uses the **entire dataset** to compute one gradient, then makes a single update.
+
+```
+1,000 examples ÷ 1,000 examples-per-update  =  1 update per epoch
+```
+
+- **Pros**: The gradient is averaged over every example, so it's very accurate — the loss curve is smooth, with no noise.
+- **Cons**: You must process the whole dataset just to take one step. For a huge dataset, that's painfully slow, and the whole dataset must fit in memory at once.
+- *(This is what our hands-on notebook uses — every update looks at all 100 data points at once, which is why its loss curve is so smooth.)*
+
+#### 2. Stochastic Gradient Descent (SGD)
+
+Uses just **one randomly chosen example** to compute the gradient and update the weights immediately.
+
+```
+1,000 examples ÷ 1 example-per-update  =  1,000 updates per epoch
+```
+
+- **Pros**: Starts improving immediately, needs almost no memory per step, and can escape small bumps in the loss landscape thanks to its randomness.
+- **Cons**: Each gradient is estimated from a single data point, so it's noisy — the loss bounces around a lot instead of decreasing smoothly (though it still trends downward overall).
+
+#### 3. Mini-Batch Gradient Descent
+
+A middle ground: uses a small **batch** of examples (commonly 32–256) per update.
+
+```
+1,000 examples ÷ 100 examples-per-batch  =  10 updates per epoch
+```
+
+- **Pros**: Much smoother than SGD (averaging over 100 examples cancels out a lot of noise), while still far cheaper per update than full Batch GD. It's also the only variant that fully takes advantage of fast, vectorized/GPU computation.
+- **Cons**: The batch size becomes a new hyperparameter to tune — too small behaves like noisy SGD, too large behaves like slow Batch GD.
+
+**In practice:** almost every real-world deep learning model is trained with Mini-Batch Gradient Descent — that's exactly why every training framework (TensorFlow, PyTorch, etc.) asks you to set a `batch_size`.
+
+| Type                    | How it Works               | Updates per Epoch (1,000 examples) | Pros         | Cons                    |
+| ----------------------- | -------------------------- | ----------------------------------- | ------------ | ----------------------- |
+| **Batch GD**      | Uses ALL data each time    | 1                                    | Stable       | Slow                    |
+| **Stochastic GD** | Uses 1 sample at a time    | 1,000                                | Fast         | Noisy                   |
+| **Mini-Batch GD** | Uses small groups (32–256) | ~4–31                                | Best of both | Need to pick batch size |
 
 ---
 
 ## 7. The Training Loop (Putting It All Together)
 
-The network learns by repeating these steps:
+Everything from Sections 2–6 — the neuron's math, the loss function, and the gradient descent update rule — comes together into one repeating loop. This loop, run over and over, *is* how a network learns:
 
 ```
 For each epoch (one complete pass through all data):
@@ -167,12 +239,25 @@ For each epoch (one complete pass through all data):
         4. UPDATE: Adjust weights using gradient descent
 ```
 
+**Note:** the inner `For each batch` loop is where the choice from Section 6 (Batch / Stochastic / Mini-Batch GD) comes in. Our hands-on notebook uses **Batch GD**, so its "batch" is the *entire* dataset — meaning that inner loop only ever runs **once** per epoch. If we were using Mini-Batch GD instead, that inner loop would run several times per epoch, once per mini-batch, with steps 1–4 repeating for each one.
+
+### Tracing One Epoch, Step by Step
+
+Say we're partway through training, and the current weights give a loss of `0.05`.
+
+1. **Forward pass** — the data flows through the network (Section 3) and produces a prediction, e.g. `0.83` for a target of `1.0`.
+2. **Compute loss** — we compare `0.83` to `1.0` using a loss function (Section 5), e.g. MSE gives `(1.0 - 0.83)² = 0.0289`.
+3. **Backward pass** — the network works out *how much each individual weight contributed* to that `0.0289` loss. (This step — **backpropagation** — is exactly what we'll learn to compute by hand next session; for now, think of it as "figuring out each weight's share of the blame.")
+4. **Update** — every weight gets nudged using the update rule from Section 6: `new_weight = old_weight - learning_rate × gradient`.
+
+Repeat this thousands of times (once per epoch, or more often if using mini-batches), and the loss keeps shrinking — that's a network learning.
+
 ### Key Terms
 
-- **Epoch**: One complete pass through the entire training data
-- **Batch**: A small group of samples processed together
-- **Learning Rate**: Step size for weight updates
-- **Convergence**: When loss stops improving significantly
+- **Epoch**: One complete pass through the entire training dataset.
+- **Batch**: The group of samples used to compute *one* gradient/update. Its size is what separates Batch GD (batch = everything), Stochastic GD (batch = 1), and Mini-Batch GD (batch = a small group) — see Section 6.
+- **Learning Rate**: The step size for each weight update (Section 6's "Choosing the Learning Rate").
+- **Convergence**: The point where the loss stops meaningfully improving from one epoch to the next — e.g. if the loss goes `0.050 → 0.049 → 0.0489 → 0.0488...`, training has essentially converged, and more epochs won't help much.
 
 ---
 
