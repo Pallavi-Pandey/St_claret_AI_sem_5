@@ -1,1 +1,0 @@
-## Train, Test & Validation Set, Vanishing & Exploding Gradient
